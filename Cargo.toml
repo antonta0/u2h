@@ -1,0 +1,18 @@
+[package]
+name = "u2h"
+version = "0.1.0"
+edition = "2021"
+description = "A simple UDP to HTTP translation proxy."
+license = "MIT"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+hyper = { version = "0.14", features = ["full"] }
+rcgen = { version = "0.11" }
+reqwest = { version = "0.11", default-features = false, features = ["rustls-tls"] }
+ring = { version = "0.16" }
+rustls = { version = "0.21", features = ["dangerous_configuration"] }
+tokio = { version = "1", features = ["full"] }
+tokio-rustls = { version = "0.24" }
+seqlock = { version = "0.2" }
