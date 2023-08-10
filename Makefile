@@ -34,14 +34,14 @@ $(BUILD_DIR)/u2h: $(BUILD_DIR)
 	$(CONTAINER_CLI) container rm -f extract
 	chmod 0755 $@
 
-$(BUILD_DIR)/README.md $(BUILD_DIR)/LICENSE: $(BUILD_DIR)
-	cp $(notdir $@) $(dir $@)
-	chmod 0644 $@
+$(BUILD_DIR)/README.md $(BUILD_DIR)/LICENSE $(BUILD_DIR)/systemd: $(BUILD_DIR)
+	cp -r $(notdir $@) $(dir $@)
+	chmod -R u=rwX,g=rX,o=rX $@
 
 $(BUILD_DIR)/SHA256SUMS: $(BUILD_DIR)/u2h
 	( cd $(dir $^) ; sha256sum $(notdir $^) > SHA256SUMS )
 
-$(BUILD_DIR)/u2h.tar.bz2: $(BUILD_DIR)/u2h $(BUILD_DIR)/README.md $(BUILD_DIR)/LICENSE $(BUILD_DIR)/SHA256SUMS
+$(BUILD_DIR)/u2h.tar.bz2: $(BUILD_DIR)/u2h $(BUILD_DIR)/README.md $(BUILD_DIR)/LICENSE $(BUILD_DIR)/systemd $(BUILD_DIR)/SHA256SUMS
 	tar -C $(dir $@) --owner=1000 --group=1000 --mtime=$$(date +%F -u --date=@0) -jcf $@ $(patsubst $(abspath $(dir $@))/%,%,$^)
 
 .PHONY: clean

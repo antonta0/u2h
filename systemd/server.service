@@ -1,0 +1,63 @@
+[Unit]
+After=network-online.target
+Description=A simple UDP to HTTP translation proxy - server.
+
+[Service]
+Type=exec
+ExecStart=/usr/local/bin/u2h server
+Restart=on-failure
+RestartSec=5s
+
+# Shared settings.
+Environment="U2H_TLS_SNI=<FILLME>"
+# You can generate a unique ID of the client via:
+# `dd if=/dev/urandom bs=1 count=48 status=none | xxd -p`
+Environment="U2H_H2_USER_AGENT=u2h:<FILLME>"
+
+# Server settings.
+Environment="U2H_CERTS_PATH=./certs"
+Environment="U2H_TLS_LISTEN=<FILLME>"
+Environment="U2H_UDP_CONNECT=<FILLME>"
+
+# Set to whatever user and group assigned for the service.
+User=nobody
+Group=nobody
+
+ReadWritePaths=%S/u2h
+StateDirectory=u2h
+WorkingDirectory=%S/u2h
+UMask=0066
+
+# Capabilities in case of listening on priveleged ports.
+# AmbientCapabilities=CAP_NET_BIND_SERVICE
+# CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+# Other hardening.
+DeviceAllow=
+DevicePolicy=closed
+LockPersonality=true
+MemoryDenyWriteExecute=true
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProcSubset=pid
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectProc=ptraceable
+ProtectSystem=strict
+RemoveIPC=true
+RestrictAddressFamilies=AF_INET
+RestrictAddressFamilies=AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+SystemCallArchitectures=native
+SystemCallErrorNumber=EPERM
+SystemCallFilter=@system-service
+SystemCallFilter=~@obsolete
+SystemCallFilter=~@privileged
+SystemCallFilter=~@resources
