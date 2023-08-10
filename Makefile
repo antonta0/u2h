@@ -2,7 +2,7 @@ BUILD_DIR ?= ./build
 
 GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 GIT_COMMIT_HASH := $(shell git log -n 1 --format=%h .)
-GIT_DIRTY := $(shell git diff --quiet || echo "-dirty")
+GIT_DIRTY := $(shell git diff --quiet && git diff --cached --quiet || echo "-dirty")
 GIT_STAMP := $(subst /,_,$(GIT_BRANCH))-$(GIT_COMMIT_HASH)$(GIT_DIRTY)
 
 CONTAINER_CLI ?= podman
@@ -34,6 +34,10 @@ $(BUILD_DIR)/u2h: $(BUILD_DIR)
 	$(CONTAINER_CLI) container rm -f extract
 	chmod 0755 $@
 
+$(BUILD_DIR)/STAMP: $(BUILD_DIR)
+	echo "$(GIT_STAMP)" > $@
+	chmod 0644 $@
+
 $(BUILD_DIR)/README.md $(BUILD_DIR)/LICENSE $(BUILD_DIR)/systemd: $(BUILD_DIR)
 	cp -r $(notdir $@) $(dir $@)
 	chmod -R u=rwX,g=rX,o=rX $@
@@ -41,8 +45,8 @@ $(BUILD_DIR)/README.md $(BUILD_DIR)/LICENSE $(BUILD_DIR)/systemd: $(BUILD_DIR)
 $(BUILD_DIR)/SHA256SUMS: $(BUILD_DIR)/u2h
 	( cd $(dir $^) ; sha256sum $(notdir $^) > SHA256SUMS )
 
-$(BUILD_DIR)/u2h.tar.bz2: $(BUILD_DIR)/u2h $(BUILD_DIR)/README.md $(BUILD_DIR)/LICENSE $(BUILD_DIR)/systemd $(BUILD_DIR)/SHA256SUMS
-	tar -C $(dir $@) --owner=1000 --group=1000 --mtime=$$(date +%F -u --date=@0) -jcf $@ $(patsubst $(abspath $(dir $@))/%,%,$^)
+$(BUILD_DIR)/u2h.tar.bz2: $(BUILD_DIR)/u2h $(BUILD_DIR)/STAMP $(BUILD_DIR)/README.md $(BUILD_DIR)/LICENSE $(BUILD_DIR)/systemd $(BUILD_DIR)/SHA256SUMS
+	tar -C $(dir $@) --owner=1000 --group=1000 --mtime="$$(date --rfc-3339=seconds --date=@0)" -jcf $@ $(patsubst $(abspath $(dir $@))/%,%,$^)
 
 .PHONY: clean
 clean:
