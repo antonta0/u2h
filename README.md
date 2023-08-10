@@ -18,11 +18,11 @@ each HTTP2 stream is copied bi-directionally to a corresponding UDP socket.
 Packets are transmitted without any modifications.
 
 TLS certificates are generated in server mode and stored on the file system.
-The configured SNI is what sets the SAN. For the client to work, the checksum
-of the certificate returned by the server should be passed to the client config,
-the same checksum can be taken by running `sha384sum` on the relevant `.cer`
-file. SNI on the client side is set via pseudo-DNS resolution, meaning TLS
-connections don't understand DNS - who needs DNS anyway?
+The configured SNI is what determines the SAN. For the client to work, the
+checksum of the certificate returned by the server should be passed to the
+client config, the same checksum can be taken by running `sha384sum` on the
+relevant `.cer` file. SNI on the client side is set via pseudo-DNS resolution,
+meaning TLS connections don't understand DNS - who needs DNS anyway?
 
 Since this a single-purpose server-client configuration pair, `User-Agent`
 header is checked strictly and the configuration must match on both ends.
@@ -34,17 +34,28 @@ proves to be useful. And no tests, because it was hacked quickly in a day.
 
 Unless there are vulnerabilities in the underlying libraries, it *should*
 be safe to have the HTTP server end exposed to the Internet. UDP end in a
-client mode should also be OK to expose, although largely depends on the
-service being translated, i.e. the receiving UDP side on the other end.
+client mode may also be OK to expose, although bear in mind that it is
+not authenticated in any way and thus there are multiple consequences. Some
+examples of what could go wrong: anyone could send a packet to a translated
+service and exploit it, then sending large datagrams even one-way could amplify
+the bandwidth usage as the packets will be sent to the upstream over HTTP
+immediately, then someone sniffing on a network traffic could probe the UDP
+socket and correlate it with HTTP traffic, etc. UDP end may also be susceptible
+to different kinds of DoS attack due to the implementation.
 
 Implementation-wise, it's a single-threaded model for the UDP receive side in
 client mode, the rest is handled by the tokio runtime. The HTTP2 stream is
-established synchronously upon receiving a UDP packet from a new address.
-The only real state, apart from the certificates stored on the filesystem, is
-the source address to a stream map in client mode, which is a regular Rust hash
-map, but limited to 4k entries and is cleaned up if getting full - if at about
-75% capacity, creating a new stream will incur a delay of scanning through the
-map.
+established synchronously upon receiving a UDP packet from a new address. A
+single connection is shared for all HTTP2 streams. The only real state, apart
+from the certificates stored on the filesystem, is the source address to a
+stream map in client mode, which is a regular Rust hash map, but limited to 4k
+entries and is cleaned up if getting full - if at about 75% capacity, creating
+a new stream will incur a delay of scanning through the map.
+
+This model can later be extended, fairly easily as it seems, with a
+multi-threaded recv via `SO_REUSEPORT`, with a hash map and an HTTP2 connection
+per thread, but I did not feel like spending more time on that at this point
+and it solves my use case well in a single-threaded mode.
 
 Run the binary with `help` argument to see how to configure the thing.
 
