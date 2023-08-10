@@ -20,7 +20,12 @@ check:
 .PHONY: containerimage
 containerimage:
 	$(CONTAINER_CLI) rmi --force $(CONTAINER_IMAGE_TAG)
-	$(CONTAINER_CLI) build --rm -t $(CONTAINER_IMAGE_TAG) .
+	$(CONTAINER_CLI) build --rm \
+		--annotation=org.opencontainers.image.source=https://github.com/antonta0/u2h \
+		--annotation=org.opencontainers.image.revision=$(GIT_STAMP) \
+		--annotation=org.opencontainers.image.description="A simple UDP to HTTP translation proxy." \
+		--annotation=org.opencontainers.image.licenses=MIT \
+		-t $(CONTAINER_IMAGE_TAG) .
 
 .PHONY: tarball
 tarball: $(BUILD_DIR)/u2h.tar.bz2
