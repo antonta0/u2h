@@ -1,5 +1,6 @@
 [Unit]
 After=network-online.target
+Wants=network-online.target
 Description=A simple UDP to HTTP translation proxy - server.
 
 [Service]
@@ -61,3 +62,6 @@ SystemCallFilter=@system-service
 SystemCallFilter=~@obsolete
 SystemCallFilter=~@privileged
 SystemCallFilter=~@resources
+
+[Install]
+WantedBy=multi-user.target
