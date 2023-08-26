@@ -157,43 +157,13 @@ async fn server() -> io::Result<()> {
                 continue;
             }
         };
-
-        let acceptor =
-            tokio_rustls::LazyConfigAcceptor::new(rustls::server::Acceptor::default(), stream);
-        tokio::pin!(acceptor);
-        let stream = match acceptor.as_mut().await {
-            Ok(start) => {
-                let client_hello = start.client_hello();
-                if let Some(server_name) = client_hello.server_name() {
-                    if server_name != sni {
-                        continue;
-                    }
-                } else {
-                    continue;
-                }
-                match start.into_stream(tls_config.clone().into()).await {
-                    Ok(stream) => stream,
-                    Err(_) => {
-                        continue;
-                    }
-                }
+        let sni = sni.clone();
+        let tls_config = tls_config.clone();
+        tokio::task::spawn(async move {
+            if let Err(err) = handle_incoming(stream, &sni, tls_config).await {
+                eprintln!("h2: server failed: {err}");
             }
-            Err(_) => continue,
-        };
-
-        let server = hyper::Server::builder(TlsConn(Some(stream)))
-            .http2_only(true)
-            .http2_keep_alive_interval(time::Duration::from_secs(60))
-            .http2_keep_alive_timeout(time::Duration::from_secs(30))
-            .http2_max_concurrent_streams(1 << 16)
-            .http2_enable_connect_protocol()
-            .serve(hyper::service::make_service_fn(|_| async {
-                Ok::<_, std::convert::Infallible>(hyper::service::service_fn(handle_h2_request))
-            }));
-
-        if let Err(err) = server.await {
-            eprintln!("h2: server failed: {err}");
-        }
+        });
     }
 }
 
@@ -325,6 +295,46 @@ async fn client() -> io::Result<()> {
             }
         });
     }
+}
+
+async fn handle_incoming(
+    stream: tokio::net::TcpStream,
+    sni: &str,
+    tls_config: rustls::ServerConfig,
+) -> Result<(), hyper::Error> {
+    let acceptor =
+        tokio_rustls::LazyConfigAcceptor::new(rustls::server::Acceptor::default(), stream);
+    tokio::pin!(acceptor);
+    let stream = match acceptor.as_mut().await {
+        Ok(start) => {
+            let client_hello = start.client_hello();
+            if let Some(server_name) = client_hello.server_name() {
+                if server_name != sni {
+                    return Ok(());
+                }
+            } else {
+                return Ok(());
+            }
+            match start.into_stream(tls_config.into()).await {
+                Ok(stream) => stream,
+                Err(_) => {
+                    return Ok(());
+                }
+            }
+        }
+        Err(_) => return Ok(()),
+    };
+
+    let server = hyper::Server::builder(TlsConn(Some(stream)))
+        .http2_only(true)
+        .http2_keep_alive_interval(time::Duration::from_secs(60))
+        .http2_keep_alive_timeout(time::Duration::from_secs(30))
+        .http2_max_concurrent_streams(1 << 16)
+        .http2_enable_connect_protocol()
+        .serve(hyper::service::make_service_fn(|_| async {
+            Ok::<_, std::convert::Infallible>(hyper::service::service_fn(handle_h2_request))
+        }));
+    server.await
 }
 
 async fn handle_h2_request(
