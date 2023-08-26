@@ -302,27 +302,32 @@ async fn handle_incoming(
     sni: &str,
     tls_config: rustls::ServerConfig,
 ) -> Result<(), hyper::Error> {
+    let tls_timeout = tokio::time::sleep(time::Duration::from_secs(10));
     let acceptor =
         tokio_rustls::LazyConfigAcceptor::new(rustls::server::Acceptor::default(), stream);
+    tokio::pin!(tls_timeout);
     tokio::pin!(acceptor);
-    let stream = match acceptor.as_mut().await {
-        Ok(start) => {
-            let client_hello = start.client_hello();
-            if let Some(server_name) = client_hello.server_name() {
-                if server_name != sni {
+    let stream = tokio::select! {
+        _ = tls_timeout => return Ok(()),
+        handshake = acceptor.as_mut() => match handshake {
+            Ok(start) => {
+                let client_hello = start.client_hello();
+                if let Some(server_name) = client_hello.server_name() {
+                    if server_name != sni {
+                        return Ok(());
+                    }
+                } else {
                     return Ok(());
                 }
-            } else {
-                return Ok(());
-            }
-            match start.into_stream(tls_config.into()).await {
-                Ok(stream) => stream,
-                Err(_) => {
-                    return Ok(());
+                match start.into_stream(tls_config.into()).await {
+                    Ok(stream) => stream,
+                    Err(_) => {
+                        return Ok(());
+                    }
                 }
             }
-        }
-        Err(_) => return Ok(()),
+            Err(_) => return Ok(()),
+        },
     };
 
     let server = hyper::Server::builder(TlsConn(Some(stream)))
