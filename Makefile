@@ -19,7 +19,7 @@ check:
 
 .PHONY: containerimage
 containerimage:
-	$(CONTAINER_CLI) rmi --force $(CONTAINER_IMAGE_TAG)
+	-$(CONTAINER_CLI) rmi --force $(CONTAINER_IMAGE_TAG)
 	$(CONTAINER_CLI) build --rm \
 		--annotation=org.opencontainers.image.source=https://github.com/antonta0/u2h \
 		--annotation=org.opencontainers.image.revision=$(GIT_STAMP) \
