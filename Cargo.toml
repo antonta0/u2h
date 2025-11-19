@@ -14,7 +14,7 @@ categories = ["command-line-utilities"]
 hyper = { version = "0.14", features = ["full"] }
 rcgen = { version = "0.11" }
 reqwest = { version = "0.12", default-features = false, features = ["http2", "rustls-tls"] }
-ring = { version = "0.16" }
+ring = { version = "0.17" }
 rustls = { version = "0.21", features = ["dangerous_configuration"] }
 tokio = { version = "1", features = ["full"] }
 tokio-rustls = { version = "0.24" }

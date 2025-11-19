@@ -1295,7 +1295,7 @@ dependencies = [
  "hyper 0.14.27",
  "rcgen",
  "reqwest",
- "ring 0.16.20",
+ "ring 0.17.14",
  "rustls 0.21.11",
  "seqlock",
  "tokio",
